@@ -132,6 +132,7 @@ def list_projects() -> None:
         print(formatted_keys)
     return
 
+
 def identify_code_sync_parameters(args) -> Dict:
     """
     Identify the code_sync parameters. The user may specify a project (which should be registered to the code_sync
