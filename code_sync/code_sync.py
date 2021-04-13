@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import yaml
-from typing import Dict, Union
+from typing import Dict
 
 
 cmd_str = 'watchmedo shell-command --recursive --patterns="{local_dir}*" --command="rsync --filter=\':- .gitignore\' ' \
@@ -36,10 +36,14 @@ def code_sync(local_dir, remote_dir, target, port=22):
     local_dir = os.path.join(local_dir, '')
     remote_dir = os.path.join(remote_dir, '')
 
-    print("Starting code_sync between {} and {}:{} ...".format(local_dir, target, remote_dir))
+    print(f"Starting code_sync between {local_dir} and {target}:{remote_dir} ...")
     print('(^C to quit)')
     cmd = cmd_str.format(local_dir=local_dir, remote_dir=remote_dir, target=target, port=port)
     subprocess.call(cmd, shell=True)
+
+
+def get_config_file_path() -> Path:
+    return Path(Path.home(), CONFIG_FILE_NAME)
 
 
 def load_config() -> Dict:
@@ -52,7 +56,7 @@ def load_config() -> Dict:
 
     create_config_if_not_exists()
 
-    config_file_path = Path(Path.home(), CONFIG_FILE_NAME)
+    config_file_path = get_config_file_path()
     with open(config_file_path, 'r') as f:
         config = yaml.safe_load(f)
     # if config is empty, return an empty dictionary (not None)
@@ -63,23 +67,23 @@ def load_config() -> Dict:
 
 def init_config() -> None:
     """Create an empty config file."""
-    config_path = Path(Path.home(), CONFIG_FILE_NAME)
+    config_path = get_config_file_path()
     open(config_path.__str__(), 'x').close()
 
 
 def create_config_if_not_exists() -> None:
     """Create the code_sync config if it does not already exist."""
-    config_file_path = Path(Path.home(), CONFIG_FILE_NAME)
+    config_file_path = get_config_file_path()
     if not config_file_path.exists():
         init_config()
 
 
-def register_project(project: Union[str, None]) -> None:
+def register_project(project: str) -> None:
     """
     Register a project to the code_sync config.
 
     Args:
-        project: The name of the project to register. If None is provided, the user will be asked for a project name.
+        project: The name of the project to register.
 
     Returns:
         None. The result is saved to the code_sync config.
@@ -88,15 +92,11 @@ def register_project(project: Union[str, None]) -> None:
         ValueError if there is already a registered project with the given name.
 
     """
-    if project is None:
-        project = input('Project name: ')
-    else:
-        print("Registering new project '{}'".format(project))
-
     config = load_config()
     if project in config:
-        raise ValueError("Project '{}' is already registered".format(project))
+        raise ValueError(f"Project '{project}' is already registered")
 
+    print(f"Registering new project '{project}'")
     local_dir = input('Path to code_sync on this local machine: ')
     target = input('Destination machine: ')
     remote_dir = input('Path on the destination machine to sync: ')
@@ -113,11 +113,11 @@ def register_project(project: Union[str, None]) -> None:
     }
 
     create_config_if_not_exists()
-    config_file_path = Path(Path.home(), CONFIG_FILE_NAME)
+    config_file_path = get_config_file_path()
     with open(config_file_path.__str__(), 'a') as f:
-        yaml.dump(config_entry_data, f, default_flow_style=False)
+        yaml.dump(config_entry_data, f, default_flow_style=False, indent=4)
 
-    print("Successfully registered project '{}'".format(project))
+    print(f"Successfully registered project '{project}'")
     return
 
 
@@ -149,7 +149,7 @@ def identify_code_sync_parameters(args) -> Dict:
     if args.project is not None:
         config = load_config()
         if args.project not in config:
-            raise ValueError("Project '{}' is not registered".format(args.project))
+            raise ValueError(f"Project '{args.project}' is not registered")
         parameters = config[args.project]
     else:
         if args.local_dir is None or args.remote_dir is None or args.target is None:
