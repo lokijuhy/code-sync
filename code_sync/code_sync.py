@@ -172,7 +172,7 @@ def identify_code_sync_parameters(args) -> Dict:
         parameters['local_dir'] = args.local_dir
         parameters['remote_dir'] = args.remote_dir
         parameters['target'] = args.target
-        parameters['port'] = args.local_dir
+        parameters['port'] = args.port
     return parameters
 
 
