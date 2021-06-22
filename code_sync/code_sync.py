@@ -8,9 +8,11 @@ import yaml
 from typing import Dict
 
 
-cmd_str = 'watchmedo shell-command --recursive --patterns="{local_dir}*" --command="rsync --filter=\':- .gitignore\' ' \
+rsync_cmd_str = 'rsync --filter=\':- .gitignore\' ' \
           '--exclude \'*.ipynb\' --exclude \'.git\' --delete-after -rz --port {port} {local_dir} ' \
-          '{target}:{remote_dir}" {local_dir}'
+          '{target}:{remote_dir}'
+
+cmd_str = 'watchmedo shell-command --recursive --patterns="{local_dir}*" --command="{rsync_cmd}" {local_dir}'
 
 epilog_str = '''
 EXAMPLE USAGE
@@ -31,15 +33,26 @@ Run code_sync with specific parameters:
 CONFIG_FILE_NAME = '.code_sync'
 
 
-def code_sync(local_dir, remote_dir, target, port=22):
+def code_sync(local_dir, remote_dir, target, port=22, verbose=False):
     # clean up slashes
+    local_dir = os.path.expanduser(local_dir)
     local_dir = os.path.join(local_dir, '')
     remote_dir = os.path.join(remote_dir, '')
 
     print(f"Starting code_sync between {local_dir} and {target}:{remote_dir} ...")
+    rsync_cmd = rsync_cmd_str.format(local_dir=local_dir, remote_dir=remote_dir, target=target, port=port)
+    print('Running startup sync:')
+    if verbose:
+        print('Running command: {}'.format(rsync_cmd))
+    subprocess.call(rsync_cmd, shell=True)
+    print('  ... startup sync complete.')
+
+    watchmedo_cmd = cmd_str.format(rsync_cmd=rsync_cmd, local_dir=local_dir)
+    print('Code-sync running')
+    if verbose:
+        print('Running command: {}'.format(watchmedo_cmd))
     print('(^C to quit)')
-    cmd = cmd_str.format(local_dir=local_dir, remote_dir=remote_dir, target=target, port=port)
-    subprocess.call(cmd, shell=True)
+    subprocess.call(watchmedo_cmd, shell=True)
 
 
 def get_config_file_path() -> Path:
@@ -172,6 +185,7 @@ def main():
     parser.add_argument('--remote_dir', help='The remote directory you want to sync', required=False)
     parser.add_argument('--target', help='Specify which remote machine to connect to', required=False)
     parser.add_argument('--port', type=int, help='ssh port for connecting to remote', default=22)
+    parser.add_argument('--verbose', help='Print verbose output', default=False, action='store_true')
     args = parser.parse_args()
 
     if args.register is not None:
@@ -181,7 +195,7 @@ def main():
     else:
         params = identify_code_sync_parameters(args)
         code_sync(local_dir=params['local_dir'], remote_dir=params['remote_dir'], target=params['target'],
-                  port=params['port'])
+                  port=params['port'], verbose=args.verbose)
 
 
 if __name__ == '__main__':
