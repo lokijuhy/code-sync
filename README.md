@@ -35,7 +35,6 @@ This command will use the configuration you set for the project when you registe
 **Starting**
 * In order to run `code_sync`, you must have an ssh connection open in another window.
 Once you've entered your password there, `code_sync` uses that connection.
-* When you start this script, nothing will be synced until a file in the `local_dir` is touched. This is normal!
 * The destination dir must exist already, but need not be empty.
 
 **Stopping**
