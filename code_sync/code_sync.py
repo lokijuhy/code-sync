@@ -91,6 +91,30 @@ def create_config_if_not_exists() -> None:
         init_config()
 
 
+def save_config(config: Dict, mode='a') -> None:
+    if mode not in ['a', 'w']:
+        raise ValueError(f"Config must be edited in mode 'a' or 'w', received '{mode}'")
+
+    create_config_if_not_exists()
+    config_file_path = get_config_file_path()
+    with open(config_file_path.__str__(), mode) as f:
+        yaml.dump(config, f, default_flow_style=False, indent=4)
+
+
+def get_project_config() -> Dict:
+    local_dir = input('Path to code_sync on this local machine: ')
+    target = input('Destination machine: ')
+    remote_dir = input('Path on the destination machine to sync: ')
+    port = int(input('Port number to use (default 22): ') or "22")
+    project_details = {
+        'local_dir': local_dir,
+        'target': target,
+        'remote_dir': remote_dir,
+        'port': port,
+    }
+    return project_details
+
+
 def register_project(project: str) -> None:
     """
     Register a project to the code_sync config.
@@ -110,26 +134,13 @@ def register_project(project: str) -> None:
         raise ValueError(f"Project '{project}' is already registered")
 
     print(f"Registering new project '{project}'")
-    local_dir = input('Path to code_sync on this local machine: ')
-    target = input('Destination machine: ')
-    remote_dir = input('Path on the destination machine to sync: ')
-    port = int(input('Port number to use (default 22): ') or "22")
+    project_config = get_project_config()
 
-    config_entry_data = {
-        project: {
-            'local_dir': local_dir,
-            'target': target,
-            'remote_dir': remote_dir,
-            'port': port,
-
-        }
+    project_config_entry = {
+        project: project_config
     }
 
-    create_config_if_not_exists()
-    config_file_path = get_config_file_path()
-    with open(config_file_path.__str__(), 'a') as f:
-        yaml.dump(config_entry_data, f, default_flow_style=False, indent=4)
-
+    save_config(project_config_entry)
     print(f"Successfully registered project '{project}'")
     return
 
@@ -140,10 +151,57 @@ def list_projects() -> None:
     config = load_config()
     if len(config) == 0:
         print('No projects registered')
-    else:
-        formatted_keys = ', '.join(list(config.keys()))
-        print(formatted_keys)
-    return
+        return
+
+    formatted_keys = ', '.join(list(config.keys()))
+    print(formatted_keys)
+
+
+def edit_projects() -> None:
+    """Edit and delete the config entries of the registered projects."""
+    create_config_if_not_exists()
+    original_config = load_config()
+    if len(original_config) == 0:
+        print('No projects registered')
+        return
+
+    config = original_config.copy()
+    print("Options: (e)dit, (d)elete, (n)ext, (s)ave and exit, (q)uit and don't save ")
+    for project in original_config:
+        response = input(f"Project '{project} > ")
+        possible_responses = {
+            'd': delete_project_from_config,
+            'delete': delete_project_from_config,
+            'e': edit_project_config,
+            'edit': edit_project_config,
+        }
+        if response in ['n', 'next']:
+            continue
+        elif response in ['s', 'save']:
+            break
+        elif response in ['q', 'quit']:
+            print('Quitting without saving.')
+            return
+        elif response in possible_responses:
+            modify_func = possible_responses[response]
+            config = modify_func(project, config)
+        else:
+            print('Invalid input')
+
+    save_config(config, mode='w')
+    print('Saved edited code-sync config.')
+
+
+def delete_project_from_config(project: str, config: Dict) -> Dict:
+    config.pop(project)
+    return config
+
+
+def edit_project_config(project: str, config: Dict) -> Dict:
+    print(f"Enter details for project '{project}'")
+    project_config = get_project_config()
+    config[project] = project_config
+    return config
 
 
 def identify_code_sync_parameters(args) -> Dict:
@@ -181,6 +239,8 @@ def main():
     parser.add_argument('project', nargs='?', default=None)
     parser.add_argument('--register', help='Register a new project to code_sync', required=False)
     parser.add_argument('--list', action='store_true', help='List all registered projects',  required=False)
+    parser.add_argument('--edit', action='store_true', help='Edit and delete the config entries of the registered'
+                                                            ' projects.',  required=False)
     parser.add_argument('--local_dir', help='The local code directory you want to sync', required=False)
     parser.add_argument('--remote_dir', help='The remote directory you want to sync', required=False)
     parser.add_argument('--target', help='Specify which remote machine to connect to', required=False)
@@ -192,6 +252,8 @@ def main():
         register_project(args.register)
     elif args.list:
         list_projects()
+    elif args.edit:
+        edit_projects()
     else:
         params = identify_code_sync_parameters(args)
         code_sync(local_dir=params['local_dir'], remote_dir=params['remote_dir'], target=params['target'],
