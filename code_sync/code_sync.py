@@ -119,7 +119,7 @@ def get_project_config_from_user() -> Dict:
 
     """
     local_dir = input('Path to code_sync on this local machine: ')
-    target = input('Destination machine: ')
+    target = input('Destination machine (name of ssh config entry): ')
     remote_dir = input('Path on the destination machine to sync: ')
     port = int(input('Port number to use (default 22): ') or "22")
     project_details = {
@@ -184,7 +184,7 @@ def edit_projects() -> None:
     config = original_config.copy()
     print("Options: (e)dit, (d)elete, (n)ext, (s)ave and exit, (q)uit and don't save ")
     for project in original_config:
-        response = input(f"Project '{project} > ")
+        response = input(f"Project '{project}' > ")
         possible_responses = {
             'd': delete_project_from_config,
             'delete': delete_project_from_config,
