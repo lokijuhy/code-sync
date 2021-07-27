@@ -92,6 +92,16 @@ def create_config_if_not_exists() -> None:
 
 
 def save_config(config: Dict, mode='a') -> None:
+    """
+    Save the code-sync config to file.
+
+    Args:
+        config: The code-sync config dictionary.
+        mode: File mode. May be either 'a' for append or 'w' for write.
+
+    Returns: None
+
+    """
     if mode not in ['a', 'w']:
         raise ValueError(f"Config must be edited in mode 'a' or 'w', received '{mode}'")
 
@@ -101,7 +111,13 @@ def save_config(config: Dict, mode='a') -> None:
         yaml.dump(config, f, default_flow_style=False, indent=4)
 
 
-def get_project_config() -> Dict:
+def get_project_config_from_user() -> Dict:
+    """
+    Ask the user for the information for the project config.
+
+    Returns: A dictionary with the config for the project, including local_dir, target, remote_dir, and port.
+
+    """
     local_dir = input('Path to code_sync on this local machine: ')
     target = input('Destination machine: ')
     remote_dir = input('Path on the destination machine to sync: ')
@@ -134,7 +150,7 @@ def register_project(project: str) -> None:
         raise ValueError(f"Project '{project}' is already registered")
 
     print(f"Registering new project '{project}'")
-    project_config = get_project_config()
+    project_config = get_project_config_from_user()
 
     project_config_entry = {
         project: project_config
@@ -193,13 +209,24 @@ def edit_projects() -> None:
 
 
 def delete_project_from_config(project: str, config: Dict) -> Dict:
+    """Delete a project entry from the config dictionary."""
     config.pop(project)
     return config
 
 
 def edit_project_config(project: str, config: Dict) -> Dict:
+    """
+    Edit the project config entry for a project that already exists in the code-sync config.
+
+    Args:
+        project: The project name (key in the code-sync config).
+        config: The global code-sync config.
+
+    Returns:
+
+    """
     print(f"Enter details for project '{project}'")
-    project_config = get_project_config()
+    project_config = get_project_config_from_user()
     config[project] = project_config
     return config
 
