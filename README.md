@@ -31,7 +31,8 @@ This command will use the configuration you set for the project when you registe
     code_sync --local_dir <mylocaldir/> --remote_dir <myremotedir/> --target <ssh_remote> --port 2222\n
 
 #### Edit or delete a registered project
-    code_sync --edit
+    code_sync --edit <project>
+    code_sync --delete <project>
 
 ### Notes
 **Starting**
