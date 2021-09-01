@@ -173,39 +173,38 @@ def list_projects() -> None:
     print(formatted_keys)
 
 
-def edit_projects() -> None:
-    """Edit and delete the config entries of the registered projects."""
+def delete_project(project_name: str) -> None:
+    """Delete the config entry of the registered project."""
     create_config_if_not_exists()
     original_config = load_config()
     if len(original_config) == 0:
         print('No projects registered')
         return
+    elif project_name not in original_config:
+        raise ValueError(f"Project '{project_name}' does not exist")
 
     config = original_config.copy()
-    print("Options: (e)dit, (d)elete, (n)ext, (s)ave and exit, (q)uit and don't save ")
-    for project in original_config:
-        response = input(f"Project '{project}' > ")
-        possible_responses = {
-            'd': delete_project_from_config,
-            'delete': delete_project_from_config,
-            'e': edit_project_config,
-            'edit': edit_project_config,
-        }
-        if response in ['n', 'next']:
-            continue
-        elif response in ['s', 'save']:
-            break
-        elif response in ['q', 'quit']:
-            print('Quitting without saving.')
-            return
-        elif response in possible_responses:
-            modify_func = possible_responses[response]
-            config = modify_func(project, config)
-        else:
-            print('Invalid input')
+    config = delete_project_from_config(project_name, config)
 
     save_config(config, mode='w')
-    print('Saved edited code-sync config.')
+    print(f'Deleted {project_name} from code-sync config.')
+
+
+def edit_project(project_name: str) -> None:
+    """Edit the config entry of the registered project."""
+    create_config_if_not_exists()
+    original_config = load_config()
+    if len(original_config) == 0:
+        print('No projects registered')
+        return
+    elif project_name not in original_config:
+        raise ValueError(f"Project '{project_name}' does not exist")
+
+    config = original_config.copy()
+    config = edit_project_config(project_name, config)
+
+    save_config(config, mode='w')
+    print(f'Updated code-sync config for project {project_name}.')
 
 
 def delete_project_from_config(project: str, config: Dict) -> Dict:
@@ -266,8 +265,8 @@ def main():
     parser.add_argument('project', nargs='?', default=None)
     parser.add_argument('--register', help='Register a new project to code_sync', required=False)
     parser.add_argument('--list', action='store_true', help='List all registered projects',  required=False)
-    parser.add_argument('--edit', action='store_true', help='Edit and delete the config entries of the registered'
-                                                            ' projects.',  required=False)
+    parser.add_argument('--edit', help='Edit the config for a registered project.',  required=False)
+    parser.add_argument('--delete', help='Delete the config for a registered project.',  required=False)
     parser.add_argument('--local_dir', help='The local code directory you want to sync', required=False)
     parser.add_argument('--remote_dir', help='The remote directory you want to sync', required=False)
     parser.add_argument('--target', help='Specify which remote machine to connect to', required=False)
@@ -280,7 +279,9 @@ def main():
     elif args.list:
         list_projects()
     elif args.edit:
-        edit_projects()
+        edit_project(args.edit)
+    elif args.delete:
+        delete_project(args.delete)
     else:
         params = identify_code_sync_parameters(args)
         code_sync(local_dir=params['local_dir'], remote_dir=params['remote_dir'], target=params['target'],
