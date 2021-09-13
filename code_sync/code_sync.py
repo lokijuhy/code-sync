@@ -91,6 +91,46 @@ def create_config_if_not_exists() -> None:
         init_config()
 
 
+def save_config(config: Dict, mode='a') -> None:
+    """
+    Save the code-sync config to file.
+
+    Args:
+        config: The code-sync config dictionary.
+        mode: File mode. May be either 'a' for append or 'w' for write.
+
+    Returns: None
+
+    """
+    if mode not in ['a', 'w']:
+        raise ValueError(f"Config must be edited in mode 'a' or 'w', received '{mode}'")
+
+    create_config_if_not_exists()
+    config_file_path = get_config_file_path()
+    with open(config_file_path.__str__(), mode) as f:
+        yaml.dump(config, f, default_flow_style=False, indent=4)
+
+
+def get_project_config_from_user() -> Dict:
+    """
+    Ask the user for the information for the project config.
+
+    Returns: A dictionary with the config for the project, including local_dir, target, remote_dir, and port.
+
+    """
+    local_dir = input('Path to code_sync on this local machine: ')
+    target = input('Destination machine (name of ssh config entry): ')
+    remote_dir = input('Path on the destination machine to sync: ')
+    port = int(input('Port number to use (default 22): ') or "22")
+    project_details = {
+        'local_dir': local_dir,
+        'target': target,
+        'remote_dir': remote_dir,
+        'port': port,
+    }
+    return project_details
+
+
 def register_project(project: str) -> None:
     """
     Register a project to the code_sync config.
@@ -110,26 +150,13 @@ def register_project(project: str) -> None:
         raise ValueError(f"Project '{project}' is already registered")
 
     print(f"Registering new project '{project}'")
-    local_dir = input('Path to code_sync on this local machine: ')
-    target = input('Destination machine: ')
-    remote_dir = input('Path on the destination machine to sync: ')
-    port = int(input('Port number to use (default 22): ') or "22")
+    project_config = get_project_config_from_user()
 
-    config_entry_data = {
-        project: {
-            'local_dir': local_dir,
-            'target': target,
-            'remote_dir': remote_dir,
-            'port': port,
-
-        }
+    project_config_entry = {
+        project: project_config
     }
 
-    create_config_if_not_exists()
-    config_file_path = get_config_file_path()
-    with open(config_file_path.__str__(), 'a') as f:
-        yaml.dump(config_entry_data, f, default_flow_style=False, indent=4)
-
+    save_config(project_config_entry)
     print(f"Successfully registered project '{project}'")
     return
 
@@ -140,10 +167,67 @@ def list_projects() -> None:
     config = load_config()
     if len(config) == 0:
         print('No projects registered')
-    else:
-        formatted_keys = ', '.join(list(config.keys()))
-        print(formatted_keys)
-    return
+        return
+
+    formatted_keys = ', '.join(list(config.keys()))
+    print(formatted_keys)
+
+
+def delete_project(project_name: str) -> None:
+    """Delete the config entry of the registered project."""
+    create_config_if_not_exists()
+    original_config = load_config()
+    if len(original_config) == 0:
+        print('No projects registered')
+        return
+    elif project_name not in original_config:
+        raise ValueError(f"Project '{project_name}' does not exist")
+
+    config = original_config.copy()
+    config = delete_project_from_config(project_name, config)
+
+    save_config(config, mode='w')
+    print(f'Deleted {project_name} from code-sync config.')
+
+
+def edit_project(project_name: str) -> None:
+    """Edit the config entry of the registered project."""
+    create_config_if_not_exists()
+    original_config = load_config()
+    if len(original_config) == 0:
+        print('No projects registered')
+        return
+    elif project_name not in original_config:
+        raise ValueError(f"Project '{project_name}' does not exist")
+
+    config = original_config.copy()
+    config = edit_project_config(project_name, config)
+
+    save_config(config, mode='w')
+    print(f'Updated code-sync config for project {project_name}.')
+
+
+def delete_project_from_config(project: str, config: Dict) -> Dict:
+    """Delete a project entry from the config dictionary."""
+    config.pop(project)
+    return config
+
+
+def edit_project_config(project: str, config: Dict) -> Dict:
+    """
+    Edit the project config entry for a project that already exists in the code-sync config.
+
+    Args:
+        project: The project name (key in the code-sync config).
+        config: The global code-sync config.
+
+    Returns:
+
+    """
+    print(f"Enter details for project '{project}'")
+    project_config = get_project_config_from_user()
+    config[project] = project_config
+    return config
 
 
 def identify_code_sync_parameters(args) -> Dict:
@@ -181,6 +265,8 @@ def main():
     parser.add_argument('project', nargs='?', default=None)
     parser.add_argument('--register', help='Register a new project to code_sync', required=False)
     parser.add_argument('--list', action='store_true', help='List all registered projects',  required=False)
+    parser.add_argument('--edit', help='Edit the config for a registered project.',  required=False)
+    parser.add_argument('--delete', help='Delete the config for a registered project.',  required=False)
     parser.add_argument('--local_dir', help='The local code directory you want to sync', required=False)
     parser.add_argument('--remote_dir', help='The remote directory you want to sync', required=False)
     parser.add_argument('--target', help='Specify which remote machine to connect to', required=False)
@@ -192,6 +278,10 @@ def main():
         register_project(args.register)
     elif args.list:
         list_projects()
+    elif args.edit:
+        edit_project(args.edit)
+    elif args.delete:
+        delete_project(args.delete)
     else:
         params = identify_code_sync_parameters(args)
         code_sync(local_dir=params['local_dir'], remote_dir=params['remote_dir'], target=params['target'],

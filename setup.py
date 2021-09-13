@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='code_sync',
-      version='0.2.1',
+      version='0.3.0',
       description='Sync code to a remote machine',
       long_description=long_description,
       long_description_content_type="text/markdown",
